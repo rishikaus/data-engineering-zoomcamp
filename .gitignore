@@ -15,7 +15,6 @@ serving_dir
 *.csv
 .ipynb_checkpoints/
 !week_6_stream_processing/avro_example/data/rides.csv
-
-git_token.txt
+git_token
 
 
