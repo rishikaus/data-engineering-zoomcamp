@@ -16,5 +16,8 @@ serving_dir
 .ipynb_checkpoints/
 !week_6_stream_processing/avro_example/data/rides.csv
 git_token
+misc_ignore.md
+micro-citadel-364322-5266e1d7f953.json
+
 
 
