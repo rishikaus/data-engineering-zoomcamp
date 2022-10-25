@@ -3,12 +3,16 @@
 
 import os
 import argparse
+import pwd
 
 from time import time
 
 import pandas as pd
+import pyarrow.parquet as pq
 from sqlalchemy import create_engine
 
+# random bullshit to try and solve for parquet
+# ftype = 0
 
 def main(params):
     user = params.user
@@ -19,20 +23,46 @@ def main(params):
     table_name = params.table_name
     url = params.url
     
+    
+    # RK - in 2022 the files are parquet so this expanding this into if..elif..else to try and cover parquet and csv and gzip cases
     # the backup files are gzipped, and it's important to keep the correct extension
     # for pandas to be able to open the file
-    if url.endswith('.csv.gz'):
-        csv_name = 'output.csv.gz'
+    if url.endswith('.parquet'):
+        file_name = 'output.parquet'
+        print('parquet file')
+        #ftype == 1
+    elif url.endswith('.csv.gz'):
+        file_name = 'output.csv.gz'
+        print('gzipped csv file')
+        #ftype == 2
     else:
-        csv_name = 'output.csv'
-
-    os.system(f"wget {url} -O {csv_name}")
+        file_name = 'output.csv'
+        print('csv file')
+        #ftype == 3
+    
+    os.system(f"wget {url} -O {file_name}")
 
     engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{db}')
 
-    df_iter = pd.read_csv(csv_name, iterator=True, chunksize=100000)
+    # RK - modifying this section with if..elif..else to cover csv or parquet cases
+    # if ftype == 0:
+    #     print('something got fucked on import')  
+    # elif ftype == 1:
+    #     print('file type is parquet')
+    #     df_iter = pd.read_parquet(file_name, iterator=True, chunksize=100000)
+    # elif ftype == 2:
+    #     print('gzipped csv - not sure what to do')
+    # elif ftype == 3:
+    #     print ('file type is csv')
+    #     df_iter = pd.read_csv(file_name, iterator=True, chunksize=100000)
 
+    df_parquet = pd.read_parquet(file_name)
+    df_parquet.to_csv('$pwd/output.csv')
+
+    df_iter = pd.read_csv(file_name, iterator=True, chunksize=100000)
     df = next(df_iter)
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    df = df.loc[:, ~df.columns.str.contains('airport_fee')]
 
     df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
     df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
@@ -48,6 +78,8 @@ def main(params):
             t_start = time()
             
             df = next(df_iter)
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+            df = df.loc[:, ~df.columns.str.contains('airport_fee')]
 
             df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
             df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)

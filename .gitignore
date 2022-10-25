@@ -1287,3 +1287,4 @@ week_1_basics_n_setup/ny_pgData/pg_wal/000000010000000000000057
 week_1_basics_n_setup/ny_pgData/pg_wal/000000010000000000000058
 week_1_basics_n_setup/ny_pgData/pg_wal/000000010000000000000059
 week_1_basics_n_setup/ny_pgData/pg_xact/0000
+week_1_basics_n_setup/2_docker_sql/upload-data.py

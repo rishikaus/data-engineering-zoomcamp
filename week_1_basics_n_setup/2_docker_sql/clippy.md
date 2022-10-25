@@ -33,3 +33,7 @@ pgcli -h localhost -p 5432 -u root -d ny_taxi
 # zoomcamp help links
 https://github.com/ziritrion/dataeng-zoomcamp/blob/main/notes/1_intro.md
 https://github.com/mharty3/data_engineering_zoomcamp_2022
+
+# THIS IS THE ACTUAL GODDAMN URL FOR THE PARQUET FILE NOW @#$@#%@#$^#%$*$^&!!!
+https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet            
+
