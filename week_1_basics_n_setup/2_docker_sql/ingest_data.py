@@ -3,16 +3,11 @@
 
 import os
 import argparse
-import pwd
 
 from time import time
 
 import pandas as pd
-import pyarrow.parquet as pq
 from sqlalchemy import create_engine
-
-# random bullshit to try and solve for parquet
-# ftype = 0
 
 def main(params):
     user = params.user
@@ -24,43 +19,19 @@ def main(params):
     url = params.url
     
     
-    # RK - in 2022 the files are parquet so this expanding this into if..elif..else to try and cover parquet and csv and gzip cases
-    # the backup files are gzipped, and it's important to keep the correct extension
-    # for pandas to be able to open the file
-    if url.endswith('.parquet'):
-        file_name = 'output.parquet'
-        print('parquet file')
-        #ftype == 1
-    elif url.endswith('.csv.gz'):
-        file_name = 'output.csv.gz'
-        print('gzipped csv file')
-        #ftype == 2
-    else:
-        file_name = 'output.csv'
-        print('csv file')
-        #ftype == 3
+    # RK - in 2022 the files are parquet; also getting rid of backup check logic
+    file_name = 'output.parquet'
     
     os.system(f"wget {url} -O {file_name}")
 
     engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{db}')
 
-    # RK - modifying this section with if..elif..else to cover csv or parquet cases
-    # if ftype == 0:
-    #     print('something got fucked on import')  
-    # elif ftype == 1:
-    #     print('file type is parquet')
-    #     df_iter = pd.read_parquet(file_name, iterator=True, chunksize=100000)
-    # elif ftype == 2:
-    #     print('gzipped csv - not sure what to do')
-    # elif ftype == 3:
-    #     print ('file type is csv')
-    #     df_iter = pd.read_csv(file_name, iterator=True, chunksize=100000)
+    # in this step the entire df is created. parquet files 
+    # are default grouped in 50M lines per row group and 
+    # they are only iterable by row groups as defined when the
+    # file was made
+    df = pd.read_parquet(file_name)
 
-    df_parquet = pd.read_parquet(file_name)
-    df_parquet.to_csv('$pwd/output.csv')
-
-    df_iter = pd.read_csv(file_name, iterator=True, chunksize=100000)
-    df = next(df_iter)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df = df.loc[:, ~df.columns.str.contains('airport_fee')]
 
@@ -69,30 +40,26 @@ def main(params):
 
     df.head(n=0).to_sql(name=table_name, con=engine, if_exists='replace')
 
-    df.to_sql(name=table_name, con=engine, if_exists='append')
+
+    
 
 
+    # df.to_sql(name=table_name, con=engine, if_exists='append')
+
+    # this whole loop is probably unnecessary; could probably
+    # just execute the above step
     while True: 
 
-        try:
-            t_start = time()
-            
-            df = next(df_iter)
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-            df = df.loc[:, ~df.columns.str.contains('airport_fee')]
+        t_start = time()
+        
+        df.to_sql(name=table_name, con=engine, if_exists='append')
 
-            df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
-            df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+        t_end = time()
 
-            df.to_sql(name=table_name, con=engine, if_exists='append')
+        print('inserted another chunk, took %.3f seconds' % (t_end - t_start))
+        break
+    print("Finished ingesting data into the postgres database")
 
-            t_end = time()
-
-            print('inserted another chunk, took %.3f second' % (t_end - t_start))
-
-        except StopIteration:
-            print("Finished ingesting data into the postgres database")
-            break
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Ingest CSV data to Postgres')
